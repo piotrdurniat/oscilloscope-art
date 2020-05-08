@@ -1,12 +1,16 @@
 let points = [];
+let textPoints = [];
+
+let wavHandler;
 
 let font;
 
 let audio;
 let previousAudio;
 
-let playButton;
-let pauseButton;
+let mute = false;
+
+let muteCheckbox;
 let clearButton;
 let textInput;
 
@@ -23,13 +27,12 @@ function preload() {
 }
 
 function setup() {
+    wavHandler = new WAVHandler(WAVConfig);
+
     createCanvas(1000, 800);
 
-    playButton = createButton("Play");
-    playButton.mousePressed(play);
-
-    pauseButton = createButton("Pause");
-    pauseButton.mousePressed(pause);
+    muteCheckbox = createCheckbox("Mute");
+    muteCheckbox.changed(handleMute);
 
     clearButton = createButton("Clear");
     clearButton.mousePressed(clearScreen);
@@ -42,22 +45,34 @@ function setup() {
     audio.loop = true;
 }
 
+function handleMute() {
+    if (this.checked()) {
+        mute = true;
+        audio.pause();
+    } else {
+        mute = false;
+        audio.play();
+    }
+}
+
 function clearScreen() {
     points = [];
 }
 
 function handleTextChange() {
     let text = this.value();
-    clearScreen();
-    if (text.length == 0) {
-        pause();
-        return;
-    }
-    points.push(...font.textToPoints(this.value(), 50, 400, 300));
+
+    textPoints = font.textToPoints(text, 50, 400, 300);
     play();
 }
 
 function play() {
+    if (mute) return;
+    if (noPoints()) {
+        audio.pause();
+        return;
+    }
+
     audio.pause();
 
     updateAudio();
@@ -65,10 +80,9 @@ function play() {
     audio.play();
 }
 
-function pause() {
-    audio.pause();
+function noPoints() {
+    return points.length < 1 && textPoints.length < 1;
 }
-
 function draw() {
     background(61, 97, 121);
     stroke(255);
@@ -78,9 +92,10 @@ function draw() {
 
     drawGrid();
 
-    if (points.length < 2) return;
+    if (noPoints()) return;
 
     drawLine(points);
+    drawLine(textPoints);
 }
 
 function drawGrid() {
@@ -121,7 +136,6 @@ function drawLine(points) {
         stroke(150, 255, 200, alpha);
 
         beginShape();
-
         vertex(p.x, p.y);
         vertex(nextPoint.x, nextPoint.y);
         endShape();
@@ -136,6 +150,10 @@ function mouseDragged() {
     addPoints();
 }
 
+function mouseReleased() {
+    play();
+}
+
 function addPoints() {
     if (mouseX >= 0 && mouseX < width && mouseY >= 0 && mouseY < height) {
         points.push(createVector(mouseX, mouseY));
@@ -143,8 +161,6 @@ function addPoints() {
 }
 
 function repeatArray(array, n) {
-    // Return an array of length n,
-    // made of repeated copies of the input array.
     let repeated = array.slice();
     while (repeated.length < n) {
         repeated = repeated.concat(repeated);
@@ -165,17 +181,17 @@ function mapValues(array, min, max) {
 }
 
 function updateAudio() {
-    if (points.length < 2) return;
+    const length = 200000;
 
-    // Generate about 10 seconds worth of data.
-    let length = 200000;
+    let data = points.concat(textPoints);
 
-    let data = mapValues(points, 0, 256);
+    data = mapValues(data, 0, 256);
     data = repeatArray(data, length);
 
-    let wav = makeWAV(WAVConfig, data);
+    wavHandler.setData(data);
+    let wavString = wavHandler.getString();
 
-    src = "data:audio/x-wav;base64," + btoa(wav);
+    src = "data:audio/x-wav;base64," + btoa(wavString);
 
     audio.src = src;
 }
