@@ -13,6 +13,7 @@ class WAVHandler {
             size: 4,
             value: "WAVE",
         },
+        // The "fmt" subchunk
         subchunk1ID: {
             size: 4,
             value: "fmt ",
@@ -27,11 +28,11 @@ class WAVHandler {
         },
         numChannels: {
             size: 2,
-            value: 2,
+            value: undefined,
         },
         sampleRate: {
             size: 4,
-            value: 22050,
+            value: undefined,
         },
         byteRate: {
             size: 4,
@@ -43,7 +44,7 @@ class WAVHandler {
         },
         bitsPerSample: {
             size: 2,
-            value: 8,
+            value: undefined,
         },
         // The "data" sub-chunk
         subchunk2ID: {
@@ -55,32 +56,26 @@ class WAVHandler {
             value: undefined,
         },
         data: {
-            size: undefined,
-            value: undefined,
+            size: 0,
+            value: [],
         },
     };
+
+    fileString = "";
 
     // http://soundfile.sapp.org/doc/WaveFormat/
 
     constructor(config) {
-        const {
-            subchunk1Size,
-            audioFormat,
-            numChannels,
-            sampleRate,
-            bitsPerSample,
-        } = config;
+        const { numChannels, sampleRate, bitsPerSample } = config;
 
         let { fields } = this;
 
-        fields.subchunk1Size.value = subchunk1Size;
-        fields.audioFormat.value = audioFormat;
         fields.numChannels.value = numChannels;
         fields.sampleRate.value = sampleRate;
         fields.bitsPerSample.value = bitsPerSample;
 
         fields.byteRate.value =
-            (fields.sampleRate *
+            (fields.sampleRate.value *
                 fields.numChannels.value *
                 fields.bitsPerSample.value) /
             8;
@@ -90,45 +85,57 @@ class WAVHandler {
 
     setSubchunk2Size(subchunk2Size) {
         this.fields.subchunk2Size.value = subchunk2Size;
-        this.fields.chunkSize.value = 36 + subchunk2Size;
+        this.setChunkSize(36 + subchunk2Size);
+    }
+
+    setChunkSize(chunkSize) {
+        this.fields.chunkSize.value = chunkSize;
     }
 
     setData(data) {
         this.fields.data.value = data;
 
-        const subchunk2Size = data.length * 2;
-        this.setSubchunk2Size(subchunk2Size);
+        this.setSubchunk2Size(data.length * 2);
+        this.generateFileString();
     }
 
-    getString() {
+    addData(data) {
+        const newDataField = this.generateDataField(data);
+        fileString.concat(newDataField);
+    }
+
+    generateFileString() {
         let file = "";
 
-        let { fields } = this;
+        const { fields } = this;
 
         let fieldNames = Object.keys(fields);
 
         for (let name of fieldNames) {
-            file += this.valueToField(fields[name].value, fields[name].size);
-        }
+            let value = fields[name].value;
+            let size = fields[name].size;
 
-        return file;
+            if (name === "data") {
+                file += this.generateDataField(value);
+                continue;
+            }
+
+            if (typeof value === "string") {
+                file += value;
+                continue;
+            }
+
+            file += this.generateField(value, size);
+        }
+        console.log(file);
+        this.fileString = file;
     }
 
-    valueToField(value, size) {
-        if (typeof value == "string") {
-            return value;
-        }
+    getFileString() {
+        return this.fileString;
+    }
 
-        if (typeof value == "object") {
-            let file = "";
-            for (let point of value) {
-                file +=
-                    this.valueToField(point.x, 1) +
-                    this.valueToField(point.y, 1);
-            }
-            return file;
-        }
-
+    generateField(value, size) {
         let field = "";
 
         for (let i = 0; i < size; i++) {
@@ -137,6 +144,15 @@ class WAVHandler {
             value = (value - byte) / 256;
         }
 
+        return field;
+    }
+
+    generateDataField(data) {
+        let field = "";
+        for (let point of data) {
+            field +=
+                String.fromCharCode(point.x) + String.fromCharCode(point.y);
+        }
         return field;
     }
 }

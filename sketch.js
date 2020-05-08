@@ -15,8 +15,6 @@ let textInput;
 let starButton;
 
 const WAVConfig = {
-    subchunk1Size: 16,
-    audioFormat: 1,
     numChannels: 2,
     sampleRate: 22050,
     bitsPerSample: 8,
@@ -49,12 +47,7 @@ function setupHTMLElements() {
     textInput.input(handleTextChange);
 
     starButton = createButton(" 'star");
-    starButton.mousePressed(handleStarButton);
-}
-
-async function handleStarButton() {
-    addPentagram();
-    // play();
+    starButton.mousePressed(addPentagram);
 }
 
 function handleMute() {
@@ -79,8 +72,6 @@ function handleTextChange() {
 }
 
 function play() {
-    console.log(points);
-
     if (mute || noPoints()) {
         audio.pause();
         return;
@@ -102,7 +93,8 @@ function draw() {
 
     fill(255);
     noStroke();
-    text("points.length: " + points.length, 20, 20);
+    const totalPoints = points.length + textPoints.length;
+    text("total points: " + totalPoints, 20, 20);
 
     drawGrid();
 
@@ -196,7 +188,7 @@ function mapValues(array, min, max) {
 }
 
 function updateAudio() {
-    const length = 200000;
+    const length = 20000;
 
     let data = points.concat(textPoints);
 
@@ -204,9 +196,9 @@ function updateAudio() {
     data = repeatArray(data, length);
 
     wavHandler.setData(data);
-    let wavString = wavHandler.getString();
+    const wavString = wavHandler.getFileString();
 
-    src = "data:audio/x-wav;base64," + btoa(wavString);
+    const src = "data:audio/x-wav;base64," + btoa(wavString);
 
     audio.src = src;
 }
