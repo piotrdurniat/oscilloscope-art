@@ -1,11 +1,14 @@
 let points = [];
 
+let font;
+
 let audio;
 let previousAudio;
 
 let playButton;
 let pauseButton;
 let clearButton;
+let textInput;
 
 const WAVConfig = {
     subchunk1Size: 16,
@@ -14,6 +17,10 @@ const WAVConfig = {
     sampleRate: 22050,
     bitsPerSample: 8,
 };
+
+function preload() {
+    font = loadFont("assets/Inconsolata.otf");
+}
 
 function setup() {
     createCanvas(1000, 800);
@@ -25,11 +32,29 @@ function setup() {
     pauseButton.mousePressed(pause);
 
     clearButton = createButton("Clear");
-    clearButton.mousePressed(() => (points = []));
+    clearButton.mousePressed(clearScreen);
+
+    textInput = createInput();
+    textInput.input(handleTextChange);
 
     audio = new Audio();
 
     audio.loop = true;
+}
+
+function clearScreen() {
+    points = [];
+}
+
+function handleTextChange() {
+    let text = this.value();
+    clearScreen();
+    if (text.length == 0) {
+        pause();
+        return;
+    }
+    points.push(...font.textToPoints(this.value(), 50, 400, 300));
+    play();
 }
 
 function play() {
@@ -132,24 +157,11 @@ function mapValues(array, min, max) {
 
     for (let point of array) {
         let x = map(point.x, 0, width, min, max);
-        let y = map(point.y, 0, height, min, max);
+        let y = map(point.y, height, 0, min, max);
         newArray.push(createVector(x, y));
     }
 
     return newArray;
-}
-
-function flipVertically(array) {
-    let newData = [];
-
-    for (point of array) {
-        let x = point.x;
-        let y = height - point.y;
-        let newVector = createVector(x, y);
-        newData.push(newVector);
-    }
-
-    return newData;
 }
 
 function updateAudio() {
@@ -158,8 +170,7 @@ function updateAudio() {
     // Generate about 10 seconds worth of data.
     let length = 200000;
 
-    let data = flipVertically(points);
-    data = mapValues(data, 0, 256);
+    let data = mapValues(points, 0, 256);
     data = repeatArray(data, length);
 
     let wav = makeWAV(WAVConfig, data);
