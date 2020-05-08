@@ -6,13 +6,13 @@ let wavHandler;
 let font;
 
 let audio;
-let previousAudio;
 
 let mute = false;
 
 let muteCheckbox;
 let clearButton;
 let textInput;
+let starButton;
 
 const WAVConfig = {
     subchunk1Size: 16,
@@ -31,6 +31,14 @@ function setup() {
 
     createCanvas(1000, 800);
 
+    setupHTMLElements();
+
+    audio = new Audio();
+
+    audio.loop = true;
+}
+
+function setupHTMLElements() {
     muteCheckbox = createCheckbox("Mute");
     muteCheckbox.changed(handleMute);
 
@@ -40,9 +48,13 @@ function setup() {
     textInput = createInput();
     textInput.input(handleTextChange);
 
-    audio = new Audio();
+    starButton = createButton(" 'star");
+    starButton.mousePressed(handleStarButton);
+}
 
-    audio.loop = true;
+async function handleStarButton() {
+    addPentagram();
+    // play();
 }
 
 function handleMute() {
@@ -67,8 +79,9 @@ function handleTextChange() {
 }
 
 function play() {
-    if (mute) return;
-    if (noPoints()) {
+    console.log(points);
+
+    if (mute || noPoints()) {
         audio.pause();
         return;
     }
@@ -83,11 +96,12 @@ function play() {
 function noPoints() {
     return points.length < 1 && textPoints.length < 1;
 }
+
 function draw() {
     background(61, 97, 121);
-    stroke(255);
-    strokeWeight(1);
+
     fill(255);
+    noStroke();
     text("points.length: " + points.length, 20, 20);
 
     drawGrid();
@@ -135,10 +149,7 @@ function drawLine(points) {
         strokeWeight(4);
         stroke(150, 255, 200, alpha);
 
-        beginShape();
-        vertex(p.x, p.y);
-        vertex(nextPoint.x, nextPoint.y);
-        endShape();
+        line(p.x, p.y, nextPoint.x, nextPoint.y);
     }
 }
 
@@ -151,11 +162,15 @@ function mouseDragged() {
 }
 
 function mouseReleased() {
-    play();
+    if (mouseAboveCanvas()) play();
+}
+
+function mouseAboveCanvas() {
+    return mouseX >= 0 && mouseX < width && mouseY >= 0 && mouseY < height;
 }
 
 function addPoints() {
-    if (mouseX >= 0 && mouseX < width && mouseY >= 0 && mouseY < height) {
+    if (mouseAboveCanvas()) {
         points.push(createVector(mouseX, mouseY));
     }
 }
@@ -197,12 +212,39 @@ function updateAudio() {
 }
 
 function addPentagram() {
-    let r = 100;
+    let r = width / 3;
 
-    for (let a = 0; a <= 4 * PI; a += TWO_PI / 2.5) {
+    let vertices = [];
+
+    for (let a = PI / 2; a <= 5 * PI; a += TWO_PI / 2.5) {
         let x = width / 2 + r * cos(a);
         let y = height / 2 + r * sin(a);
         let newPoint = createVector(x, y);
-        points.push(newPoint);
+        vertices.push(newPoint);
     }
+
+    let pentagramInterpolated = lerpArray(vertices, 0.01);
+
+    points.push(...pentagramInterpolated);
+
+    play();
+}
+
+function lerpArray(vertices, step) {
+    const returnArr = [];
+
+    for (let i = 0; i < vertices.length - 1; i++) {
+        let amount = 0;
+
+        const v1 = vertices[i];
+        const v2 = vertices[i + 1];
+
+        while (amount < 1) {
+            amount += step;
+            let p = p5.Vector.lerp(v1, v2, amount);
+            returnArr.push(p);
+        }
+    }
+
+    return returnArr;
 }
