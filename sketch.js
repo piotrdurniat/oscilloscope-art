@@ -46,7 +46,7 @@ function setupHTMLElements() {
     textInput = createInput();
     textInput.input(handleTextChange);
 
-    starButton = createButton(" 'star");
+    starButton = createButton("⛧");
     starButton.mousePressed(addPentagram);
 }
 
